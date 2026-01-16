@@ -1,0 +1,121 @@
+# 应用配置
+app:
+  name: "PPT AI Optimizer"
+  version: "1.0.0"
+  host: "0.0.0.0"
+  port: 8000
+  debug: true
+
+# 上传配置
+upload:
+  max_size: 52428800  # 50MB in bytes
+  allowed_extensions: [".pptx"]
+  upload_dir: "./uploads"
+  temp_dir: "./temp"
+
+# 模型配置
+models:
+  # 讯飞星火PPT智能助手
+  xunfei:
+    enabled: true
+    name: "讯飞星火PPT智能助手"
+    api_url: "https://spark-api.xf-yun.com/v3.5/chat"
+    app_id: "your_app_id"
+    api_key: "your_api_key"
+    api_secret: "your_api_secret"
+    timeout: 30
+    max_retries: 3
+    core_strength: "scene_adaptation"  # 场景化适配
+    focus_dimensions: ["content", "logic", "layout", "color", "font", "chart"]
+
+  # 百度文心一言PPT优化模块
+  wenxin:
+    enabled: true
+    name: "文心一言PPT优化"
+    api_url: "https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/completions"
+    api_key: "your_api_key"
+    secret_key: "your_secret_key"
+    timeout: 30
+    max_retries: 3
+    core_strength: "layout_design"  # 排版设计
+    focus_dimensions: ["layout", "color", "font"]
+
+  # 阿里云通义千问PPT生成器
+  qianwen:
+    enabled: true
+    name: "通义千问PPT生成"
+    api_url: "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation"
+    api_key: "your_api_key"
+    timeout: 30
+    max_retries: 3
+    core_strength: "content_logic"  # 内容逻辑
+    focus_dimensions: ["logic", "chart", "content"]
+
+  # 腾讯混元PPT智能分析
+  hunyuan:
+    enabled: true
+    name: "腾讯混元PPT分析"
+    api_url: "https://hunyuan.tencentcloudapi.com"
+    secret_id: "your_secret_id"
+    secret_key: "your_secret_key"
+    timeout: 30
+    max_retries: 3
+    core_strength: "multi_fusion"  # 多建议融合
+    focus_dimensions: ["content", "logic", "layout", "color", "font", "chart"]
+
+# 迭代修正配置
+iteration:
+  enabled: true
+  max_rounds: 2  # 最大迭代轮次
+  conflict_threshold: 0.05  # 冲突率阈值(5%)
+  manual_threshold: 0.10  # 人工干预阈值(10%)
+
+  # 迭代流程配置
+  workflow:
+    - model: "xunfei"
+      action: "generate"
+      dimensions: ["content", "logic", "layout", "color", "font", "chart"]
+
+    - model: "wenxin"
+      action: "correct"
+      dimensions: ["layout", "color", "font"]
+      input_from: "xunfei"
+
+    - model: "qianwen"
+      action: "correct"
+      dimensions: ["logic", "chart", "content"]
+      input_from: "wenxin"
+
+    - model: "hunyuan"
+      action: "merge"
+      dimensions: ["content", "logic", "layout", "color", "font", "chart"]
+      input_from: "qianwen"
+
+# 冲突调和规则
+conflict_resolution:
+  # 行业规范优先级(商务PPT为例)
+  rules:
+    color:
+      priority: ["brand_color", "model_suggestion"]
+    layout:
+      priority: ["industry_standard", "model_suggestion"]
+    font:
+      priority: ["readability", "model_suggestion"]
+
+  # 仲裁模型
+  arbiter_model: "hunyuan"
+
+# 日志配置
+logging:
+  level: "INFO"
+  log_dir: "./logs"
+  rotation: "100 MB"
+  retention: "30 days"
+  format: "{time:YYYY-MM-DD HH:mm:ss} | {level} | {name}:{function}:{line} | {message}"
+
+# CORS配置
+cors:
+  allow_origins: ["http://localhost:5173", "http://localhost:3000"]
+  allow_credentials: true
+  allow_methods: ["*"]
+  allow_headers: ["*"]

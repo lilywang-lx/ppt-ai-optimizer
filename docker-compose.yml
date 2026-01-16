@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  # 后端服务
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: ppt-optimizer-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/config:/app/config
+      - ./backend/uploads:/app/uploads
+      - ./backend/temp:/app/temp
+      - ./backend/logs:/app/logs
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    networks:
+      - ppt-network
+
+  # 前端服务
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: ppt-optimizer-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - ppt-network
+
+networks:
+  ppt-network:
+    driver: bridge
+
+volumes:
+  backend-data:
