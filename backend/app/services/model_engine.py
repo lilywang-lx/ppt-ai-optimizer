@@ -349,16 +349,45 @@ class QianwenModelClient(BaseModelClient):
 
     def _build_prompt(self, ppt_data: PPTParseResult) -> str:
         """构建提示词(侧重内容逻辑)"""
-        prompt = f"""请分析以下PPT的内容逻辑性和图表可视化,提供优化建议。
 
-PPT: {ppt_data.filename} (共{ppt_data.total_slides}页)
+        # 提取前5页的内容概要
+        slides_summary = ""
+        for idx, slide in enumerate(ppt_data.slides[:5]):
+            slides_summary += f"\n第{idx+1}页 ({slide.slide_type}):\n{slide.content[:200]}\n"
 
-重点关注:
+        prompt = f"""你是一位专业的PPT优化专家。请分析以下PPT并提供优化建议。
+
+PPT信息:
+- 文件名: {ppt_data.filename}
+- 总页数: {ppt_data.total_slides}页
+- 前5页内容概要:{slides_summary}
+
+请重点分析:
 1. 内容的逻辑性和完整性
-2. 图表的数据可视化效果
-3. 内容表达的清晰度
+2. 文字表达的清晰度和专业性
+3. 图表的数据可视化效果
+4. 整体结构和布局
 
-请返回JSON格式的优化建议。
+请必须按照以下JSON格式返回优化建议(只返回JSON，不要其他文字):
+
+{{
+  "suggestions": [
+    {{
+      "slide_index": 1,
+      "optimization_dimension": "content",
+      "original_content": "原始内容片段",
+      "suggestion": "具体的优化建议",
+      "reason": "为什么需要优化",
+      "priority": "recommend"
+    }}
+  ]
+}}
+
+注意:
+- optimization_dimension可选: content(内容), logic(逻辑), layout(版式), color(配色), font(字体), chart(图表)
+- priority可选: must(必须), recommend(推荐), optional(可选)
+- 请至少提供3-5条具体的优化建议
+- 只返回JSON格式，不要包含其他解释性文字
 """
         return prompt
 
@@ -386,8 +415,24 @@ PPT: {ppt_data.filename} (共{ppt_data.total_slides}页)
         """解析响应"""
         try:
             content = response.get("output", {}).get("text", "{}")
+
+            # 清理可能的markdown代码块标记
+            if isinstance(content, str):
+                content = content.strip()
+                if content.startswith("```json"):
+                    content = content[7:]
+                if content.startswith("```"):
+                    content = content[3:]
+                if content.endswith("```"):
+                    content = content[:-3]
+                content = content.strip()
+
+            logger.debug(f"通义千问原始响应内容: {content[:500]}")
+
             data = json.loads(content) if isinstance(content, str) else content
             suggestions_data = data.get("suggestions", [])
+
+            logger.info(f"通义千问解析到 {len(suggestions_data)} 条建议")
 
             suggestions = [
                 OptimizationSuggestion(
@@ -439,12 +484,48 @@ class HunyuanModelClient(BaseModelClient):
 
     def _build_prompt(self, ppt_data: PPTParseResult) -> str:
         """构建提示词"""
-        prompt = f"""作为PPT综合优化专家,请全面分析以下PPT并提供优化建议。
 
-PPT: {ppt_data.filename}
-页数: {ppt_data.total_slides}
+        # 提取前5页的内容概要
+        slides_summary = ""
+        for idx, slide in enumerate(ppt_data.slides[:5]):
+            slides_summary += f"\n第{idx+1}页 ({slide.slide_type}):\n{slide.content[:200]}\n"
 
-请从内容、逻辑、排版、配色、字体、图表等多个维度进行分析,提供综合优化方案。
+        prompt = f"""你是一位资深的PPT综合优化专家。请全面分析以下PPT并提供专业的优化建议。
+
+PPT信息:
+- 文件名: {ppt_data.filename}
+- 总页数: {ppt_data.total_slides}页
+- 前5页内容概要:{slides_summary}
+
+请从以下多个维度进行全面分析:
+1. 内容质量和逻辑结构
+2. 视觉排版和布局
+3. 配色方案和品牌一致性
+4. 字体选择和可读性
+5. 图表设计和数据可视化
+6. 整体专业度和说服力
+
+请严格按照以下JSON格式返回优化建议(只返回JSON，不要其他说明):
+
+{{
+  "suggestions": [
+    {{
+      "slide_index": 1,
+      "optimization_dimension": "layout",
+      "original_content": "当前存在的问题描述",
+      "suggestion": "详细的优化建议和改进方案",
+      "reason": "为什么这样优化会更好",
+      "priority": "recommend"
+    }}
+  ]
+}}
+
+字段说明:
+- slide_index: 页码(1-{ppt_data.total_slides})
+- optimization_dimension: content/logic/layout/color/font/chart
+- priority: must(必须)/recommend(推荐)/optional(可选)
+- 请提供5-10条切实可行的优化建议
+- 必须只返回纯JSON，不要添加markdown标记或其他文字
 """
         return prompt
 
@@ -470,8 +551,24 @@ PPT: {ppt_data.filename}
         """解析响应"""
         try:
             content = response.get("choices", [{}])[0].get("message", {}).get("content", "{}")
+
+            # 清理可能的markdown代码块标记
+            if isinstance(content, str):
+                content = content.strip()
+                if content.startswith("```json"):
+                    content = content[7:]
+                if content.startswith("```"):
+                    content = content[3:]
+                if content.endswith("```"):
+                    content = content[:-3]
+                content = content.strip()
+
+            logger.debug(f"腾讯混元原始响应内容: {content[:500]}")
+
             data = json.loads(content) if isinstance(content, str) else content
             suggestions_data = data.get("suggestions", [])
+
+            logger.info(f"腾讯混元解析到 {len(suggestions_data)} 条建议")
 
             suggestions = [
                 OptimizationSuggestion(
@@ -528,23 +625,31 @@ class ModelEngine:
 
         logger.info(f"模型引擎初始化完成,已加载 {len(self.clients)} 个模型")
 
-    async def analyze_ppt_parallel(self, ppt_data: PPTParseResult) -> List[ModelSuggestion]:
+    async def analyze_ppt_parallel(
+        self,
+        ppt_data: PPTParseResult,
+        guidance: Dict[str, Any] = None
+    ) -> List[ModelSuggestion]:
         """
         并行调用所有模型分析PPT
 
         Args:
             ppt_data: PPT解析数据
+            guidance: 可选的优化指引（来自内容分析）
 
         Returns:
             List[ModelSuggestion]: 所有模型的建议列表
         """
         logger.info(f"开始并行调用 {len(self.clients)} 个模型分析PPT: {ppt_data.ppt_id}")
 
+        if guidance:
+            logger.info(f"使用优化指引，包含 {len(guidance.get('approved_opportunities', []))} 个批准的优化机会")
+
         # 创建异步任务
         tasks = []
         model_names = []
         for name, client in self.clients.items():
-            tasks.append(self._safe_analyze(client, ppt_data))
+            tasks.append(self._safe_analyze(client, ppt_data, guidance))
             model_names.append(name)
 
         # 并行执行
@@ -568,13 +673,19 @@ class ModelEngine:
         logger.info(f"并行分析完成,共收到 {len(suggestions)} 个模型的建议")
         return suggestions
 
-    async def _safe_analyze(self, client: BaseModelClient, ppt_data: PPTParseResult) -> ModelSuggestion:
+    async def _safe_analyze(
+        self,
+        client: BaseModelClient,
+        ppt_data: PPTParseResult,
+        guidance: Dict[str, Any] = None
+    ) -> ModelSuggestion:
         """
         安全地调用模型(带异常捕获)
 
         Args:
             client: 模型客户端
             ppt_data: PPT数据
+            guidance: 可选的优化指引
 
         Returns:
             ModelSuggestion: 建议结果

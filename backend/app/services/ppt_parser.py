@@ -25,6 +25,7 @@ class PPTParser:
     def __init__(self):
         """初始化解析器"""
         self.supported_extensions = ['.pptx']
+        self.presentation = None  # 保存presentation对象引用
 
     def parse(self, file_path: str, ppt_id: str = None) -> PPTParseResult:
         """
@@ -55,6 +56,7 @@ class PPTParser:
 
             # 打开PPT文件
             prs = Presentation(file_path)
+            self.presentation = prs  # 保存引用供其他方法使用
 
             # 提取主题信息
             theme = self._extract_theme(prs)
@@ -189,8 +191,8 @@ class PPTParser:
 
         return LayoutInfo(
             layout_type=layout.name,
-            width=slide.width,
-            height=slide.height,
+            width=self.presentation.slide_width,
+            height=self.presentation.slide_height,
             placeholders=placeholders
         )
 

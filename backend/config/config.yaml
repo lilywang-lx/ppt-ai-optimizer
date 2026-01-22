@@ -17,7 +17,7 @@ upload:
 models:
   # 讯飞星火PPT智能助手
   xunfei:
-    enabled: true
+    enabled: false  # 暂时禁用，未配置API Key
     name: "讯飞星火PPT智能助手"
     api_url: "https://spark-api.xf-yun.com/v3.5/chat"
     app_id: "your_app_id"
@@ -30,7 +30,7 @@ models:
 
   # 百度文心一言PPT优化模块
   wenxin:
-    enabled: true
+    enabled: false  # 暂时禁用，未配置API Key
     name: "文心一言PPT优化"
     api_url: "https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/completions"
     api_key: "your_api_key"
@@ -45,7 +45,7 @@ models:
     enabled: true
     name: "通义千问PPT生成"
     api_url: "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation"
-    api_key: "your_api_key"
+    api_key: "sk-415d63d81430466dbd045d9972a6c431"
     timeout: 30
     max_retries: 3
     core_strength: "content_logic"  # 内容逻辑
@@ -56,11 +56,23 @@ models:
     enabled: true
     name: "腾讯混元PPT分析"
     api_url: "https://hunyuan.tencentcloudapi.com"
-    secret_id: "your_secret_id"
-    secret_key: "your_secret_key"
+    secret_id: "AKIDnX6TdbOyKTQBjEbljV4QdeR1OZWIsxvi"
+    secret_key: "e6LRMMDsfPzMWUFnAKH1YP3VjkY9XigR"
     timeout: 30
     max_retries: 3
     core_strength: "multi_fusion"  # 多建议融合
+    focus_dimensions: ["content", "logic", "layout", "color", "font", "chart"]
+
+  # 火山引擎PPT智能优化
+  volcengine:
+    enabled: true
+    name: "火山引擎PPT优化"
+    api_url: "https://ark.cn-beijing.volces.com/api/v3/chat/completions"
+    api_key: "AKLTN2NhZTc5ZGRmNmQ4NDliYTlhYzgzM2I2MDA1OGViNDE"
+    secret_key: "TkRrellURXpaalpoTVRZNE5EY3daR0k1WTJJd01XTmtNek0wTW1VMVkyUQ=="
+    timeout: 30
+    max_retries: 3
+    core_strength: "comprehensive_analysis"  # 全方位分析
     focus_dimensions: ["content", "logic", "layout", "color", "font", "chart"]
 
 # 迭代修正配置
@@ -115,7 +127,28 @@ logging:
 
 # CORS配置
 cors:
-  allow_origins: ["http://localhost:5173", "http://localhost:3000"]
+  allow_origins: ["http://localhost:5173", "http://localhost:3000", "http://10.1.0.16:5173", "http://10.1.0.16:3000"]
   allow_credentials: true
   allow_methods: ["*"]
   allow_headers: ["*"]
+
+# 内容分析配置
+content_analysis:
+  enabled: true
+  analyzer_model: "qianwen"  # 使用通义千问进行内容分析
+  timeout: 60
+  max_retries: 3
+  analysis_depth: "comprehensive"  # comprehensive/standard/quick
+  prompt_template: "content_analysis_v1"
+
+# 优化流程配置
+optimization_flow:
+  require_user_review: true  # 是否强制用户审查
+  auto_approve_timeout: -1  # 自动批准超时（秒），-1表示永不自动批准
+
+# 修改追踪配置
+change_tracking:
+  enabled: true
+  detail_level: "detailed"  # detailed/summary
+  export_formats: ["json", "markdown"]
+

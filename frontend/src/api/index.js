@@ -55,5 +55,27 @@ export default {
   // 健康检查
   healthCheck() {
     return api.get('/health')
+  },
+
+  // ========== 新增API方法 ==========
+
+  // 获取内容分析结果
+  getContentAnalysis(pptId) {
+    return api.get(`/content-analysis/${pptId}`)
+  },
+
+  // 提交用户编辑
+  submitEdits(pptId, editRequest) {
+    return api.post(`/submit-edits/${pptId}`, editRequest)
+  },
+
+  // 跳过审查（使用默认建议）
+  skipReview(pptId) {
+    return api.post(`/skip-review/${pptId}`)
+  },
+
+  // 获取修改追踪报告
+  getChangeReport(pptId) {
+    return api.get(`/change-report/${pptId}`)
   }
 }

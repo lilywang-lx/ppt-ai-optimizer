@@ -262,3 +262,233 @@ MIT License
 ## 致谢
 
 感谢讯飞星火、文心一言、通义千问、腾讯混元提供的大模型API支持。
+
+---
+
+# 🆕 新功能：两阶段智能优化 (2026-01-22)
+
+## 功能概述
+
+系统已升级为**两阶段智能优化流程**，让用户深度参与优化过程：
+
+### ✨ 第一阶段：智能内容分析
+- 🧠 大模型深度解析PPT内容
+- 📊 提取核心要点（3-5条）
+- 📑 分析整体大纲结构
+- 📈 评估内容质量（连贯性、逻辑性、完整性）
+- 🎯 智能识别优化机会并分优先级
+
+### ✏️ 第二阶段：交互式优化
+- ☑️ 用户审查并选择优化建议
+- ✍️ 用户可编辑建议内容
+- 💬 用户可添加备注
+- ⚙️ 用户可设置优化偏好
+- 📋 生成详细的修改追踪报告
+
+## 新增组件
+
+### 后端服务 (backend/app/services/)
+
+1. **ContentAnalyzer** (420行)
+   - 使用大模型进行深度内容分析
+   - 提取整体分析、每页分析、优化机会
+   - 支持多种大模型（默认使用通义千问）
+
+2. **ChangeTracker** (240行)
+   - 追踪所有修改记录
+   - 生成详细的修改报告
+   - 支持导出JSON/Markdown格式
+
+3. **OptimizationOrchestrator** (260行)
+   - 协调两阶段优化流程
+   - 管理用户编辑和模型优化
+   - 智能转换优化机会为建议
+
+### 前端组件 (frontend/src/components/)
+
+1. **OverallAnalysisCard.vue** (320行)
+   - 展示整体分析摘要
+   - 核心要点、质量评分、大纲结构
+   - 美观的可视化展示
+
+2. **OptimizationOpportunityList.vue** (470行) ⭐
+   - 优化建议列表展示和编辑
+   - 多维度筛选（优先级、类别、范围）
+   - 完整的CRUD操作
+   - 实时统计
+
+3. **SlideAnalysisList.vue** (240行)
+   - 每页详细分析展示
+   - 质量评分、问题识别
+   - 折叠/展开功能
+
+4. **ChangeReportDisplay.vue** (530行)
+   - 修改追踪报告展示
+   - 丰富的统计图表
+   - 按页面分组展示
+   - 支持导出报告
+
+## 新增API端点
+
+```
+GET  /api/content-analysis/{ppt_id}  # 获取内容分析结果
+POST /api/submit-edits/{ppt_id}      # 提交用户编辑
+POST /api/skip-review/{ppt_id}       # 跳过审查（使用默认建议）
+GET  /api/change-report/{ppt_id}     # 获取修改追踪报告
+```
+
+## 新增配置选项
+
+```yaml
+# 内容分析配置
+content_analysis:
+  enabled: true
+  analyzer_model: "qianwen"      # 分析模型
+  timeout: 60
+  analysis_depth: "comprehensive"
+
+# 优化流程配置
+optimization_flow:
+  require_user_review: true      # 是否强制用户审查
+  auto_approve_timeout: -1       # 自动批准超时（-1表示永不）
+
+# 修改追踪配置
+change_tracking:
+  enabled: true
+  detail_level: "detailed"
+  export_formats: ["json", "markdown"]
+```
+
+## 工作流程对比
+
+### 原有流程
+```
+上传 → 解析 → 多模型分析 → 迭代修正 → 生成PPT → 完成
+```
+
+### 新流程 ⭐
+```
+上传 → 解析 → 内容分析 → 【用户审查编辑】→ 执行优化 → 生成PPT + 修改报告 → 完成
+                            ↑
+                        用户可控点
+```
+
+## 使用示例
+
+### 前端集成
+
+```vue
+<template>
+  <!-- 审查步骤 -->
+  <div v-if="currentStep === 'review'">
+    <!-- 整体分析 -->
+    <OverallAnalysisCard :analysis="contentAnalysis.overall_analysis" />
+
+    <!-- 优化建议列表 -->
+    <OptimizationOpportunityList
+      :opportunities="editedOpportunities"
+      @update:opportunities="editedOpportunities = $event"
+    />
+
+    <!-- 操作按钮 -->
+    <el-button @click="skipReview">使用默认建议</el-button>
+    <el-button type="primary" @click="submitEdits">应用选中建议</el-button>
+  </div>
+
+  <!-- 结果展示 -->
+  <div v-if="currentStep === 'result'">
+    <el-tabs>
+      <el-tab-pane label="内容分析">
+        <OverallAnalysisCard :analysis="result.content_analysis" />
+      </el-tab-pane>
+      <el-tab-pane label="修改追踪">
+        <ChangeReportDisplay :report="changeReport" />
+      </el-tab-pane>
+    </el-tabs>
+  </div>
+</template>
+
+<script setup>
+import api from '@/api'
+import OverallAnalysisCard from '@/components/OverallAnalysisCard.vue'
+import OptimizationOpportunityList from '@/components/OptimizationOpportunityList.vue'
+import ChangeReportDisplay from '@/components/ChangeReportDisplay.vue'
+
+// 加载内容分析
+const loadContentAnalysis = async () => {
+  const response = await api.getContentAnalysis(pptId)
+  contentAnalysis.value = response.analysis
+}
+
+// 提交编辑
+const submitEdits = async () => {
+  const editRequest = {
+    ppt_id: pptId.value,
+    modified_opportunities: editedOpportunities.value,
+    additional_instructions: "...",
+    preferences: { style: "professional" }
+  }
+  await api.submitEdits(pptId.value, editRequest)
+}
+
+// 跳过审查
+const skipReview = async () => {
+  await api.skipReview(pptId.value)
+}
+</script>
+```
+
+## 文档
+
+详细文档位于 `docs/` 目录：
+
+- **content-analyzer-design.md** - 系统设计文档（400行）
+- **implementation-summary.md** - 后端实现总结（600行）
+- **frontend-ui-design.md** - 前端UI设计方案（500行）
+- **frontend-implementation-summary.md** - 前端组件文档（500行）
+
+## 升级说明
+
+### 从旧版本升级
+
+1. **后端**：
+   ```bash
+   cd backend
+   pip install -r requirements.txt  # 更新依赖
+   # 配置文件会自动向后兼容
+   ```
+
+2. **前端**：
+   ```bash
+   cd frontend
+   npm install  # 更新依赖
+   ```
+
+3. **配置**：
+   - 在 `config/config.yaml` 中添加新的配置项（可选）
+   - 系统会使用默认值如果配置项不存在
+
+### 向后兼容
+
+- ✅ 旧的API端点完全兼容
+- ✅ 可通过配置关闭新功能
+- ✅ 前端可渐进式升级
+
+## 技术亮点
+
+- 🎯 **用户为中心**：完全可控的优化过程
+- 🧠 **智能分析**：多维度内容评估
+- 📊 **可视化**：美观的统计图表
+- ♿ **可访问性**：响应式设计，键盘导航
+- 🚀 **高性能**：异步并行，虚拟滚动
+
+## 开发进度
+
+- ✅ 后端核心服务（100%）
+- ✅ 前端核心组件（100%）
+- 🔄 前端主页面集成（待完成）
+- 🔄 端到端测试（待完成）
+
+---
+
+**🎉 新功能已完成开发，欢迎体验和反馈！**

@@ -7,7 +7,6 @@ import yaml
 from pathlib import Path
 from typing import Dict, Any, List
 from pydantic import BaseModel, Field
-from pydantic_settings import BaseSettings
 
 
 class AppConfig(BaseModel):
@@ -81,7 +80,7 @@ class CORSConfig(BaseModel):
     allow_headers: List[str] = ["*"]
 
 
-class Settings(BaseSettings):
+class Settings(BaseModel):
     """全局配置类"""
     app: AppConfig
     upload: UploadConfig
@@ -92,8 +91,8 @@ class Settings(BaseSettings):
     cors: CORSConfig
 
     class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+        # Pydantic 1.x configuration
+        arbitrary_types_allowed = True
 
 
 def load_config(config_path: str = None) -> Settings:
@@ -107,8 +106,8 @@ def load_config(config_path: str = None) -> Settings:
         Settings: 配置对象
     """
     if config_path is None:
-        # 获取当前文件所在目录的父目录,然后拼接config路径
-        current_dir = Path(__file__).parent.parent
+        # 获取backend目录路径
+        current_dir = Path(__file__).parent.parent.parent  # app/core -> app -> backend
         config_path = current_dir / "config" / "config.yaml"
 
     # 检查文件是否存在
