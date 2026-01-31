@@ -1,10 +1,17 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import Portal from '@/views/Portal.vue'
 import Home from '@/views/Home.vue'
 
 const routes = [
   {
     path: '/',
-    name: 'Home',
+    name: 'Portal',
+    component: Portal,
+    meta: { isPortal: true }
+  },
+  {
+    path: '/ppt',
+    name: 'PPT',
     component: Home
   }
 ]
